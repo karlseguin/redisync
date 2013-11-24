@@ -31,6 +31,7 @@ func New(config *Config) *Worker {
 }
 
 func (w *Worker) Start(ready chan bool) {
+  lastOk := ""
   for {
     w.prefix = time.Now().Format("20060102_150405")
     if err := w.connect(); err != nil {
@@ -39,9 +40,12 @@ func (w *Worker) Start(ready chan bool) {
     }
     if err := w.dump(); err != nil {
       w.failure(err)
+      w.cleanup(w.prefix)
       continue
     }
     ready <- true
+    w.cleanup(lastOk)
+    lastOk = w.prefix
     if err := w.aof(); err != nil {
       w.failure(err)
       continue
@@ -53,6 +57,15 @@ func (w *Worker) Start(ready chan bool) {
 
 func (w *Worker) Stop() {
   w.stop <- true
+  if w.config.Cleanup {
+    w.cleanup(w.prefix)
+  }
+}
+
+func (w *Worker) cleanup(prefix string) {
+  if len(prefix) == 0 { return }
+  os.Remove(path.Join(w.config.Storage, prefix + ".rdb"))
+  os.Remove(path.Join(w.config.Storage, prefix + ".aof"))
 }
 
 func (w *Worker) failure(err error) {

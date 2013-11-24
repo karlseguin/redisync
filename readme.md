@@ -28,4 +28,5 @@ Configuration is done via the `config.json` file (or, optionally by specifying a
 * **network** tcp/unix
 * **address** the address:port for the master
 * **storage** the path to store files
+* **cleanup** cleanup old dumps/aof once a new worker has successfully taken over
 
