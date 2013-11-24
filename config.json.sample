@@ -1,6 +1,5 @@
 {
   "ttl": 1800,
-  "cleanup": true,
   "network": "tcp",
   "address": "localhost:6379",
   "storage": "./data"

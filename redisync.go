@@ -14,7 +14,7 @@ func Run() {
   for {
     ready := make(chan bool, 1)
     newWorker := New(config)
-    go newWorker.Start(ready)
+    go newWorker.Run(ready)
     <- ready
     if current != nil {
       current.Stop()

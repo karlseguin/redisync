@@ -7,7 +7,6 @@ import(
 )
 
 type Config struct {
-  Cleanup bool
   Storage string
   Network string
   Address string

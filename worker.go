@@ -15,51 +15,53 @@ const BUFFER_SIZE = 32768
 type Worker struct {
   read int
   position int
-  prefix string
   conn net.Conn
   buffer []byte
   config *Config
   stop chan bool
+  stopped chan bool
 }
 
 func New(config *Config) *Worker {
   return &Worker{
     config: config,
     stop: make(chan bool, 1),
+    stopped: make(chan bool, 1),
     buffer: make([]byte, BUFFER_SIZE),
   }
 }
 
-func (w *Worker) Start(ready chan bool) {
-  lastOk := ""
+func (w *Worker) Run(ready chan bool) {
+  lastPrefix := ""
   for {
-    w.prefix = time.Now().Format("20060102_150405")
+    prefix := time.Now().Format("20060102_150405")
     if err := w.connect(); err != nil {
       w.failure(err)
       continue
     }
-    if err := w.dump(); err != nil {
+    if err := w.dump(prefix); err != nil {
       w.failure(err)
-      w.cleanup(w.prefix)
+      w.cleanup(prefix)
       continue
     }
     ready <- true
-    w.cleanup(lastOk)
-    lastOk = w.prefix
-    if err := w.aof(); err != nil {
+    w.cleanup(lastPrefix)
+    lastPrefix = prefix
+    if err := w.aof(prefix); err != nil {
       w.failure(err)
       continue
     }
     break
   }
   w.close()
+  os.Rename(path.Join(w.config.Storage, lastPrefix + ".rdb"), path.Join(w.config.Storage, "prev" + ".rdb"))
+  os.Rename(path.Join(w.config.Storage, lastPrefix + ".aof"), path.Join(w.config.Storage, "prev" + ".aof"))
+  w.stopped <- true
 }
 
 func (w *Worker) Stop() {
   w.stop <- true
-  if w.config.Cleanup {
-    w.cleanup(w.prefix)
-  }
+  <- w.stopped
 }
 
 func (w *Worker) cleanup(prefix string) {
@@ -81,12 +83,12 @@ func (w *Worker) connect() error {
   return nil
 }
 
-func (w *Worker) dump() error {
+func (w *Worker) dump(prefix string) error {
   w.read = 0
   w.conn.Write([]byte("*1\r\n$4\r\nSYNC\r\n"))
   length, err := w.readDumpInfo()
   if err != nil { return err }
-  file, err := os.Create(path.Join(w.config.Storage, w.prefix + ".rdb"))
+  file, err := os.Create(path.Join(w.config.Storage, prefix + ".rdb"))
   if err != nil { return err }
   defer file.Close()
 
@@ -134,8 +136,8 @@ func (w *Worker) readDumpInfo() (int, error) {
   }
 }
 
-func (w *Worker) aof() error {
-  file, err := os.Create(path.Join(w.config.Storage, w.prefix + ".aof"))
+func (w *Worker) aof(prefix string) error {
+  file, err := os.Create(path.Join(w.config.Storage, prefix + ".aof"))
   if err != nil { return err }
   defer file.Close()
   for {
