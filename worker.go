@@ -61,7 +61,11 @@ func (w *Worker) Run(ready chan bool) {
 
 func (w *Worker) Stop() {
   w.stop <- true
-  <- w.stopped
+  select {
+  case <- w.stopped:
+  default: time.After(time.Minute):
+    log.Println("worker failed to stop after 1 minute")
+  }
 }
 
 func (w *Worker) cleanup(prefix string) {
