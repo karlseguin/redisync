@@ -63,7 +63,7 @@ func (w *Worker) Stop() {
   w.stop <- true
   select {
   case <- w.stopped:
-  default: time.After(time.Minute):
+  case <- time.After(time.Minute):
     log.Println("worker failed to stop after 1 minute")
   }
 }
