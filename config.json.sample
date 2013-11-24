@@ -1,0 +1,6 @@
+{
+  "ttl": 1800,
+  "network": "tcp",
+  "address": "localhost:6379",
+  "storage": "./data"
+}
