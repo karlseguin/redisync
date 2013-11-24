@@ -120,18 +120,21 @@ func (w *Worker) readDumpInfo() (int, error) {
     n, err := w.conn.Read(w.buffer[w.read:])
     if err != nil { return 0, err }
     if n == 0 { continue }
-    if n == 1 && w.buffer[0] == '\n' { continue } //what is this?
+    if n == 1 && w.buffer[0] == '\n' { continue } //common short circuit
 
-    if w.buffer[0] != '$' {
-      return 0, errors.New("expecting synchornization dump to start with a bulk reply")
-    }
     w.read += n
-    for i := 0; i < n; i++ {
-      if w.buffer[i] == '\r' && w.buffer[i+1] == '\n' {
-        length, err := strconv.Atoi(string(w.buffer[1:i]))
-        if err != nil { return 0, err }
-        w.position = i + 2
-        return length, nil
+    i := 0
+    for ; i < n; i++ {
+      if w.buffer[i] == '$' {
+        i++
+        for j := i; j < n; j++ {
+          if w.buffer[j+1] == '\r' && w.buffer[j+2] == '\n' {
+            length, err := strconv.Atoi(string(w.buffer[i:j]))
+            if err != nil { return 0, err }
+            w.position = i + 2
+            return length, nil
+          }
+        }
       }
     }
     if w.read > 128 {
