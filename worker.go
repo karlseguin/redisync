@@ -129,7 +129,7 @@ func (w *Worker) readDumpInfo() (int, error) {
         i++
         for j := i; j < n; j++ {
           if w.buffer[j+1] == '\r' && w.buffer[j+2] == '\n' {
-            length, err := strconv.Atoi(string(w.buffer[i:j]))
+            length, err := strconv.Atoi(string(w.buffer[i:j+1]))
             if err != nil { return 0, err }
             w.position = i + 2
             return length, nil
